@@ -14,7 +14,8 @@ class LocationListMapperImpl : LocationListMapper<Location, LocationEntity> {
                 country = location.country,
                 lat = location.lat,
                 lon = location.lon,
-                url = location.url
+                url = location.url,
+                timezone = location.timezone,
             )
         }
     }

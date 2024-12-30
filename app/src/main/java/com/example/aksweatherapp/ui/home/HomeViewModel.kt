@@ -207,7 +207,7 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun saveLocation(location: Location?) {
+    private fun saveLocation(location: Location?) {
         location?.let {
             viewModelScope.launch {
                 saveWeatherLocationUseCase.invoke(LocationEntityMapperImpl().map(location))
