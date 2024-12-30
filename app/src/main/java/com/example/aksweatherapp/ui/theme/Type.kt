@@ -18,7 +18,7 @@ val provider = GoogleFont.Provider(
 
 val fontName = GoogleFont("Playfair Display")
 
-val fontFamily = FontFamily(
+public val fontFamily = FontFamily(
         Font(
                 googleFont = fontName,
                 fontProvider = provider

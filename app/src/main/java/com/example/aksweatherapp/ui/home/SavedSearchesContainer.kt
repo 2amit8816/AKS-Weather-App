@@ -4,27 +4,25 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DismissDirection
 import androidx.compose.material3.DismissValue
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismiss
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDismissState
@@ -34,16 +32,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.ExperimentalUnitApi
 import androidx.compose.ui.unit.dp
@@ -52,12 +51,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.aksweatherapp.R
 import com.example.aksweatherapp.common.UiState
-import com.example.aksweatherapp.data.dto.BulkResponseBody
-import com.example.aksweatherapp.data.dto.WeatherBody
+import com.example.aksweatherapp.common.Utility.getFormattedDate
+import com.example.aksweatherapp.common.WeatherIconUtility.getWeatherIconUrl
+import com.example.aksweatherapp.data.dto.BulkWeatherData
+import com.example.aksweatherapp.data.dto.Current
+import com.example.aksweatherapp.data.dto.CurrentWeather
+import com.example.aksweatherapp.data.dto.Daily
 import com.example.aksweatherapp.domain.entity.LocationEntity
 import com.example.aksweatherapp.ui.core.CustomFontSize
 import com.example.aksweatherapp.ui.core.CustomSize
-import com.example.aksweatherapp.ui.model.WeatherDetails
 import com.example.aksweatherapp.ui.theme.fontFamily
 
 @Composable
@@ -66,18 +68,20 @@ fun SavedSearchesContainer(
 ) {
     val viewModel = hiltViewModel<HomeViewModel>()
     val savedLocationsList by viewModel.savedLocationsList.collectAsState()
+    val list = remember { mutableStateOf<List<LocationEntity>>(emptyList()) }
 
-    LaunchedEffect(key1 = Unit) {
+    LaunchedEffect(key1 = null) {
         viewModel.getAllSavedLocations()
     }
 
     Box(
         modifier = modifier
-            .background(Color.White)
+            .fillMaxSize()
+
     ) {
         when (savedLocationsList) {
             is UiState.Loading -> {
-                Text("Loading")
+               ProgressBar()
             }
 
             is UiState.Success -> {
@@ -86,7 +90,10 @@ fun SavedSearchesContainer(
                 if (locations.isEmpty()) {
                     EmptyWeatherState()
                 } else {
-                    viewModel.getBulkWeatherData(locations)
+                    if (list.value.size <= locations.size) {
+                        viewModel.getBulkWeatherData(locations)
+                    }
+                    list.value = locations
                     WeatherListView()
                 }
             }
@@ -106,15 +113,15 @@ fun WeatherListView() {
 
     when (savedWeatherList) {
         is UiState.Loading -> {
-            Text("Loading")
+            ProgressBar()
         }
 
         is UiState.Success -> {
-            val data = (savedWeatherList as UiState.Success<BulkResponseBody>).uiData
+            val data = (savedWeatherList as UiState.Success<List<BulkWeatherData>>).uiData
             LazyColumn {
-                itemsIndexed(data.list) { _, weather ->
-                    DismissableRow(weather.query) {
-                        viewModel.deleteSavedLocation(it.id)
+                itemsIndexed(data) { _, weather ->
+                    DismissableRow(weather) {
+                        viewModel.deleteSavedLocation(it.id!!)
                     }
                 }
             }
@@ -129,7 +136,7 @@ fun WeatherListView() {
 @OptIn(ExperimentalMaterial3Api::class)
 @ExperimentalUnitApi
 @Composable
-fun DismissableRow(weather: WeatherBody, onDelete: (WeatherBody) -> Unit) {
+fun DismissableRow(weather: BulkWeatherData, onDelete: (BulkWeatherData) -> Unit) {
     val dismissState = rememberDismissState()
 
     if (dismissState.isDismissed(DismissDirection.EndToStart)) {
@@ -177,12 +184,10 @@ fun DismissableRow(weather: WeatherBody, onDelete: (WeatherBody) -> Unit) {
 }
 
 @Composable
-fun SavedWeatherRow(weather: WeatherBody) {
+fun SavedWeatherRow(weather: BulkWeatherData) {
     var isExpanded by remember { mutableStateOf(false) }
     val viewModel = hiltViewModel<HomeViewModel>()
-    val weatherDetailsList by viewModel.weatherDetailsList.collectAsState()
-
-    val data = weatherDetailsList.firstOrNull { it.locationId == weather.id }
+    val scope = rememberCoroutineScope()
 
     Column {
         ConstraintLayout(
@@ -205,7 +210,7 @@ fun SavedWeatherRow(weather: WeatherBody) {
                         top.linkTo(parent.top)
                         start.linkTo(parent.start)
                     },
-                text = weather.location.name,
+                text = weather.location.name!!,
                 style = TextStyle(
                     fontSize = CustomFontSize.FS_24SP.fontSize,
                     fontWeight = FontWeight.Normal,
@@ -214,7 +219,7 @@ fun SavedWeatherRow(weather: WeatherBody) {
             )
 
             Text(
-                text = weather.location.regionName,
+                text = weather.location.region!!,
                 modifier = Modifier
                     .fillMaxWidth(0.6f)
                     .constrainAs(region) {
@@ -229,21 +234,23 @@ fun SavedWeatherRow(weather: WeatherBody) {
             )
 
             AsyncImage(
-                model = "https:${weather.current.condition.icon}",
+                model = getWeatherIconUrl(weather.weather.current?.weatherCode),
                 contentDescription = "Weather Icon",
                 modifier = Modifier
                     .constrainAs(weatherIcon) {
                         top.linkTo(parent.top)
                         end.linkTo(parent.end)
                     }
+                    .size(56.dp)
             )
 
             Text(
-                text = "${weather.current.tempC}°c",
+                text = "${weather.weather.current?.apparentTemperature}°c",
                 modifier = Modifier
-                    .fillMaxWidth(0.2f)
+                    .fillMaxWidth(0.1f)
                     .constrainAs(weatherTemp) {
                         top.linkTo(parent.top)
+                        bottom.linkTo(parent.bottom)
                         end.linkTo(weatherIcon.start)
                     },
                 maxLines = 1,
@@ -253,7 +260,7 @@ fun SavedWeatherRow(weather: WeatherBody) {
             )
 
             Text(
-                text = weather.current.lastUpdated,
+                text = getFormattedDate(weather.weather.current?.time!!, weather.location.timezone!!),
                 modifier = Modifier
                     .fillMaxWidth(0.4f)
                     .constrainAs(updatedOn) {
@@ -279,15 +286,36 @@ fun SavedWeatherRow(weather: WeatherBody) {
         }
 
         if (isExpanded) {
-            Column {
-                data?.let {
-                    DetailsWeatherView(data)
-                } ?: viewModel.getAstronomyData(
-                    weatherData = weather.current,
-                    locationId = weather.id,
-                    latlon = "${weather.location.lat},${weather.location.lon}",
-                    date = "2022-09-01"
-                )
+            val astroDataState =
+                remember { mutableStateOf<UiState<CurrentWeather>>(UiState.Loading) }
+            LaunchedEffect(scope) {
+                viewModel.getAstronomyData(
+                    weather.location.lat.toString(),
+                    weather.location.lon.toString()
+                ).collect {
+                    astroDataState.value = it
+                }
+            }
+            when (astroDataState.value) {
+                is UiState.Loading -> {
+                    AnimatedVisibility(true) {
+                        ProgressBar()
+                    }
+                }
+
+                is UiState.Success -> {
+                    val data = (astroDataState.value as UiState.Success<CurrentWeather>).uiData
+                    AnimatedVisibility(true){
+                        Column {
+                            DetailsWeatherView(data, weather.location.timezone!!)
+                        }
+                    }
+
+                }
+
+                is UiState.Error -> {
+                    Text("Error")
+                }
             }
         }
     }
@@ -322,10 +350,3 @@ fun EmptyWeatherState() {
         )
     }
 }
-
-
-//@Preview("")
-//@Composable
-//fun SavedSearchesContainerPreview() {
-//    SavedSearchesContainer()
-//}

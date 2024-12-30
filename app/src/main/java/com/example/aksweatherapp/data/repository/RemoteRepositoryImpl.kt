@@ -4,7 +4,9 @@ import com.example.aksweatherapp.common.NetworkResponseState
 import com.example.aksweatherapp.data.dto.AstronomyBody
 import com.example.aksweatherapp.data.dto.BulkRequestBody
 import com.example.aksweatherapp.data.dto.BulkResponseBody
+import com.example.aksweatherapp.data.dto.CurrentWeather
 import com.example.aksweatherapp.data.dto.Location
+import com.example.aksweatherapp.data.dto.LocationSearchResult
 import com.example.aksweatherapp.data.dto.Weather
 import com.example.aksweatherapp.data.remote.RemoteDataSource
 import com.example.aksweatherapp.domain.repository.RemoteRepository
@@ -17,7 +19,7 @@ import javax.inject.Inject
 class RemoteRepositoryImpl @Inject constructor(
     private val remoteDataSource: RemoteDataSource,
 ): RemoteRepository {
-    override suspend fun getLocationsList(searchQuery: String): Flow<NetworkResponseState<List<Location>>> {
+    override suspend fun getLocationsList(searchQuery: String): Flow<NetworkResponseState<LocationSearchResult>> {
         return remoteDataSource.getLocationListFromApi(searchQuery).map {
             when (it) {
                 is NetworkResponseState.Loading -> NetworkResponseState.Loading
@@ -27,8 +29,8 @@ class RemoteRepositoryImpl @Inject constructor(
         }.flowOn(Dispatchers.IO)
     }
 
-    override suspend fun getCurrentWeather(latlon: String): Flow<NetworkResponseState<Weather>> {
-        return remoteDataSource.getCurrentWeatherDataFromApi(latlon).map {
+    override suspend fun getCurrentWeather(lat: String, lon: String): Flow<NetworkResponseState<CurrentWeather>> {
+        return remoteDataSource.getCurrentWeatherDataFromApi(lat, lon).map {
             when (it) {
                 is NetworkResponseState.Loading -> NetworkResponseState.Loading
                 is NetworkResponseState.Success -> NetworkResponseState.Success(it.result)
@@ -37,8 +39,8 @@ class RemoteRepositoryImpl @Inject constructor(
         }.flowOn(Dispatchers.IO)
     }
 
-    override suspend fun getBulkDataFromApi(locationBody: BulkRequestBody): Flow<NetworkResponseState<BulkResponseBody>> {
-        return remoteDataSource.getBulkDataFromApi(locationBody).map {
+    override suspend fun getBulkDataFromApi(latList: String, lonList: String): Flow<NetworkResponseState<List<CurrentWeather>>> {
+        return remoteDataSource.getBulkDataFromApi(latList, lonList).map {
             when (it) {
                 is NetworkResponseState.Loading -> NetworkResponseState.Loading
                 is NetworkResponseState.Success -> NetworkResponseState.Success(it.result)
@@ -48,10 +50,10 @@ class RemoteRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getAstroDataFromApi(
-        latlon: String,
-        date: String
-    ): Flow<NetworkResponseState<AstronomyBody>> {
-        return remoteDataSource.getAstroDataFromApi(latlon, date).map {
+        lat: String,
+        lon: String
+    ): Flow<NetworkResponseState<CurrentWeather>> {
+        return remoteDataSource.getAstroDataFromApi(lat, lon).map {
             when (it) {
                 is NetworkResponseState.Loading -> NetworkResponseState.Loading
                 is NetworkResponseState.Success -> NetworkResponseState.Success(it.result)

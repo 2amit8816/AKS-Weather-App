@@ -26,12 +26,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.aksweatherapp.R
+import com.example.aksweatherapp.common.Utility
+import com.example.aksweatherapp.data.dto.CurrentWeather
 import com.example.aksweatherapp.ui.core.CustomFontSize
 import com.example.aksweatherapp.ui.core.CustomSize
 import com.example.aksweatherapp.ui.model.WeatherDetails
 
 @Composable
-fun DetailsWeatherView(weatherDetails: WeatherDetails) {
+fun DetailsWeatherView(weatherDetails: CurrentWeather, timeZone: String) {
 
     Row(
         modifier = Modifier
@@ -79,7 +81,7 @@ fun DetailsWeatherView(weatherDetails: WeatherDetails) {
                     Spacer(modifier = Modifier.height(CustomSize.S_6DP.size))
 
                     Text(
-                        text = "${weatherDetails.precipitation} mm",
+                        text = "${weatherDetails.current?.precipitation} mm",
                         style = TextStyle(
                             color = colorResource(R.color.black),
                             fontSize = CustomFontSize.FS_16SP.fontSize
@@ -123,7 +125,7 @@ fun DetailsWeatherView(weatherDetails: WeatherDetails) {
                     Spacer(modifier = Modifier.height(CustomSize.S_6DP.size))
 
                     Text(
-                        text = "${weatherDetails.uvIndex}",
+                        text = "${weatherDetails.daily?.uvIndexMax?.get(0)}",
                         style = TextStyle(
                             color = colorResource(R.color.black),
                             fontSize = CustomFontSize.FS_16SP.fontSize
@@ -181,7 +183,7 @@ fun DetailsWeatherView(weatherDetails: WeatherDetails) {
                         Spacer(modifier = Modifier.height(CustomSize.S_6DP.size))
 
                         Text(
-                            text = "${weatherDetails.wind} kph",
+                            text = "${weatherDetails.current?.windSpeed10m} kph",
                             style = TextStyle(
                                 color = colorResource(R.color.black),
                                 fontSize = CustomFontSize.FS_16SP.fontSize
@@ -247,7 +249,10 @@ fun DetailsWeatherView(weatherDetails: WeatherDetails) {
 
                             Text(
                                 modifier = Modifier.padding(start = CustomSize.S_4DP.size),
-                                text = weatherDetails.sunRise,
+                                text = Utility.getFormattedDate(
+                                    weatherDetails.daily?.sunrise?.get(0)!!.toString(),
+                                    timeZone
+                                ),
                                 style = TextStyle(fontSize = CustomFontSize.FS_12SP.fontSize)
                             )
                         }
@@ -261,7 +266,10 @@ fun DetailsWeatherView(weatherDetails: WeatherDetails) {
 
                             Text(
                                 modifier = Modifier.padding(start = CustomSize.S_4DP.size),
-                                text = weatherDetails.sunSet,
+                                text = Utility.getFormattedDate(
+                                    weatherDetails.daily?.sunset?.get(0)!!.toString(),
+                                    timeZone
+                                ),
                                 style = TextStyle(fontSize = CustomFontSize.FS_12SP.fontSize)
                             )
                         }

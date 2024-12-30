@@ -8,7 +8,7 @@ class LocationListMapperImpl : LocationListMapper<Location, LocationEntity> {
     override fun map(input: List<Location>): List<LocationEntity> {
         return input.map { location ->
             LocationEntity(
-                id = location.id,
+                id = location.id.toString(),
                 name = location.name,
                 region = location.region,
                 country = location.country,

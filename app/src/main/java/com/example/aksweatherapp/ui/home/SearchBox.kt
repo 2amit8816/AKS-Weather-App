@@ -23,9 +23,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
@@ -44,7 +42,7 @@ fun SearchBox(
     val viewModel = hiltViewModel<HomeViewModel>()
     val searchResults by viewModel.locationsList.collectAsState()
     val input = viewModel.inputText.collectAsState()
-    val currentWeather by viewModel.currentWeather.collectAsState()
+    val currentWeather = viewModel.currentWeather.collectAsState()
 
     Column(modifier = modifier.padding(top = CustomSize.S_10DP.size)) {
         BasicTextField(
@@ -55,7 +53,7 @@ fun SearchBox(
             value = input.value,
             onValueChange = {
                 viewModel.updateInput(it)
-                viewModel.getLocationSuggetionList(it)
+                viewModel.getLocationSuggetionList()
             },
             maxLines = 1,
         ) {
@@ -100,16 +98,8 @@ fun SearchBox(
         }
 
         SearchResult(searchResults) { location ->
-            val latlon = location.lat.toString() + "," + location.lon.toString()
-            viewModel.getLocationByLatLonFrom(latlon)
-            when (currentWeather) {
-                is UiState.Success -> {
-                    viewModel.saveLocation(location)
-                }
-
-                else -> {
-                    // Do nothing
-                }
+            location?.let {
+                viewModel.getWeatherByLatLonFrom(it)
             }
         }
     }
@@ -117,8 +107,8 @@ fun SearchBox(
 
 @Composable
 fun SearchResult(
-    searchResults: UiState<List<Location>>,
-    onLocationSelected: (Location) -> Unit
+    searchResults: UiState<List<Location?>>,
+    onLocationSelected: (Location?) -> Unit
 ) {
     if (searchResults is UiState.Success && searchResults.uiData.isNotEmpty()) {
         Row {
@@ -138,14 +128,14 @@ fun SearchResult(
             )
         }
         LazyColumn {
-            itemsIndexed(searchResults.uiData) { index, location ->
+            itemsIndexed(searchResults.uiData) { _, location ->
                 Divider(color = Color.LightGray, thickness = (CustomSize.S_0_5DP.size))
                 Text(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(CustomSize.S_10DP.size)
                         .clickable { onLocationSelected(location) },
-                    text = location.name + ", " + location.region + ", " + location.country,
+                    text = location?.name + ", " + location?.region + ", " + location?.country,
                     maxLines = 1
                 )
             }

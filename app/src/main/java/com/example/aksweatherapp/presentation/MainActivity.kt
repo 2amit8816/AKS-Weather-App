@@ -83,6 +83,7 @@ fun Home() {
         SavedSearchesContainer(
             modifier = Modifier
                 .fillMaxHeight(0.8f)
+                .fillMaxWidth()
                 .padding(bottom = CustomSize.S_10DP.size, top = CustomSize.S_10DP.size)
                 .constrainAs(savedContainer) {
                     top.linkTo(search.bottom)

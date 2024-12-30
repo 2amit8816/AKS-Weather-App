@@ -4,16 +4,18 @@ import com.example.aksweatherapp.common.NetworkResponseState
 import com.example.aksweatherapp.data.dto.AstronomyBody
 import com.example.aksweatherapp.data.dto.BulkRequestBody
 import com.example.aksweatherapp.data.dto.BulkResponseBody
+import com.example.aksweatherapp.data.dto.CurrentWeather
 import com.example.aksweatherapp.data.dto.Location
+import com.example.aksweatherapp.data.dto.LocationSearchResult
 import com.example.aksweatherapp.data.dto.Weather
 import kotlinx.coroutines.flow.Flow
 
 interface RemoteDataSource {
-    fun getLocationListFromApi(searchQuery: String): Flow<NetworkResponseState<List<Location>>>
+    fun getLocationListFromApi(searchQuery: String): Flow<NetworkResponseState<LocationSearchResult>>
 
-    fun getCurrentWeatherDataFromApi(latlon: String): Flow<NetworkResponseState<Weather>>
+    fun getCurrentWeatherDataFromApi(lat: String, lon: String): Flow<NetworkResponseState<CurrentWeather>>
 
-    fun getBulkDataFromApi(locationBody: BulkRequestBody): Flow<NetworkResponseState<BulkResponseBody>>
+    fun getBulkDataFromApi(latList: String, lonList: String): Flow<NetworkResponseState<List<CurrentWeather>>>
 
-    fun getAstroDataFromApi(latlon: String, date: String): Flow<NetworkResponseState<AstronomyBody>>
+    fun getAstroDataFromApi(latlon: String, date: String): Flow<NetworkResponseState<CurrentWeather>>
 }

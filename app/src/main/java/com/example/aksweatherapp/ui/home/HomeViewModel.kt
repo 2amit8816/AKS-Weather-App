@@ -4,13 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.aksweatherapp.common.NetworkResponseState
 import com.example.aksweatherapp.common.UiState
-import com.example.aksweatherapp.data.dto.AstronomyBody
-import com.example.aksweatherapp.data.dto.BulkRequestBody
-import com.example.aksweatherapp.data.dto.BulkResponseBody
+import com.example.aksweatherapp.data.dto.BulkWeatherData
+import com.example.aksweatherapp.data.dto.CurrentWeather
 import com.example.aksweatherapp.data.dto.Location
-import com.example.aksweatherapp.data.dto.LocationBody
-import com.example.aksweatherapp.data.dto.Weather
-import com.example.aksweatherapp.data.dto.WeatherData
 import com.example.aksweatherapp.data.mapper.LocationEntityMapperImpl
 import com.example.aksweatherapp.domain.entity.LocationEntity
 import com.example.aksweatherapp.domain.usecase.AllSavedLocationsListUseCase
@@ -22,16 +18,27 @@ import com.example.aksweatherapp.domain.usecase.LocationListUseCase
 import com.example.aksweatherapp.domain.usecase.SaveWeatherLocationUseCase
 import com.example.aksweatherapp.ui.model.WeatherDetails
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * ViewModel for Home Screen
+ * @property locationListUseCase UseCase for getting location list
+ * @property saveWeatherLocationUseCase UseCase for saving location
+ * @property weatherUseCaseImpl UseCase for getting weather data
+ * @property allSavedLocationsListUseCase UseCase for getting all saved locations
+ * @property bulkLocationUseCase UseCase for getting bulk weather data
+ * @property deleteLocationFromDBUseCase UseCase for deleting location from DB
+ * @property astroDataUseCase UseCase for getting astronomy data
+ */
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val locationListUseCase: LocationListUseCase,
@@ -45,28 +52,32 @@ class HomeViewModel @Inject constructor(
     private val _inputText: MutableStateFlow<String> = MutableStateFlow("")
     val inputText: StateFlow<String> = _inputText
 
-    private val _locationsList: MutableStateFlow<UiState<List<Location>>> =
+    private val _locationsList: MutableStateFlow<UiState<List<Location?>>> =
         MutableStateFlow(UiState.Loading)
-    val locationsList: StateFlow<UiState<List<Location>>> = _locationsList
+    val locationsList: StateFlow<UiState<List<Location?>>> = _locationsList
 
-    private val _currentWeather: MutableStateFlow<UiState<Weather>> =
+    private val _currentWeather: MutableStateFlow<UiState<CurrentWeather>> =
         MutableStateFlow(UiState.Loading)
-    val currentWeather: StateFlow<UiState<Weather>> = _currentWeather
+    val currentWeather: StateFlow<UiState<CurrentWeather>> = _currentWeather
 
     private val _savedLocationsList: MutableStateFlow<UiState<List<LocationEntity>>> =
         MutableStateFlow(UiState.Loading)
     val savedLocationsList: StateFlow<UiState<List<LocationEntity>>> = _savedLocationsList
 
-    private val _bulkWeatherList: MutableStateFlow<UiState<BulkResponseBody>> =
+    private val _bulkWeatherList: MutableStateFlow<UiState<List<BulkWeatherData>>> =
         MutableStateFlow(UiState.Loading)
-    val bulkWeatherList: StateFlow<UiState<BulkResponseBody>> = _bulkWeatherList
+    val bulkWeatherList: StateFlow<UiState<List<BulkWeatherData>>> = _bulkWeatherList
 
     private val _weatherDetailsList = MutableStateFlow(emptyArray<WeatherDetails>())
     val weatherDetailsList: StateFlow<Array<WeatherDetails>> = _weatherDetailsList.asStateFlow()
 
-    private val _astroDataState = MutableStateFlow<UiState<AstronomyBody>>(UiState.Loading)
-    val astroDataState: StateFlow<UiState<AstronomyBody>> = _astroDataState.asStateFlow()
+    private val _astroDataState = MutableStateFlow<UiState<CurrentWeather>>(UiState.Loading)
+    val astroDataState: StateFlow<UiState<CurrentWeather>> = _astroDataState.asStateFlow()
 
+    /**
+     * Update input text
+     * @param inputText input text
+     */
     fun updateInput(inputText: String) {
         if (inputText.isEmpty()) {
             clearSearch()
@@ -75,23 +86,28 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Clear search
+     */
     fun clearSearch() {
         _inputText.value = ""
         _locationsList.value = UiState.Success(emptyList())
     }
 
-    fun getLocationSuggetionList(searchQuery: String) {
+    fun getLocationSuggetionList() {
         viewModelScope.launch {
             inputText.debounce(timeoutMillis = 500).distinctUntilChanged().collectLatest { input ->
                 if (input.isNotEmpty()) {
-                    locationListUseCase.invoke(searchQuery).collect {
+                    locationListUseCase.invoke(inputText.value).collect {
                         when (it) {
                             is NetworkResponseState.Loading -> {
                                 _locationsList.value = UiState.Loading
                             }
 
                             is NetworkResponseState.Success -> {
-                                _locationsList.value = UiState.Success(it.result)
+                                it.result.results?.let {
+                                    _locationsList.value = UiState.Success(it)
+                                }
                             }
 
                             is NetworkResponseState.Error -> {
@@ -105,16 +121,17 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun getLocationByLatLonFrom(latlon: String) {
+    fun getWeatherByLatLonFrom(location: Location) {
         viewModelScope.launch {
-            weatherUseCaseImpl.invoke(latlon).collect {
+            weatherUseCaseImpl.invoke(location.lat.toString(), location.lon.toString()).collect {
                 when (it) {
                     is NetworkResponseState.Loading -> {
                         _currentWeather.value = UiState.Loading
                     }
 
                     is NetworkResponseState.Success -> {
-                        _currentWeather.value = UiState.Success(it.result)
+                        clearSearch()
+                        saveLocation(location)
                     }
 
                     is NetworkResponseState.Error -> {
@@ -127,36 +144,74 @@ class HomeViewModel @Inject constructor(
     }
 
     fun getBulkWeatherData(locationList: List<LocationEntity>) {
-        val locationBodyList = mutableListOf<LocationBody>()
-        locationList.map {
-            LocationBody(
-                query = "${it.lat},${it.lon}",
-                customId = it.id.toString()
-            )
-        }.forEach { locationBodyList.add(it) }
+        val latList =
+            locationList.map { it.lat }.toString().removeSurrounding("[", "]").replace(" ", "")
+        val lonList =
+            locationList.map { it.lon }.toString().removeSurrounding("[", "]").replace(" ", "")
+
         viewModelScope.launch {
-            bulkLocationUseCase.invoke(BulkRequestBody(locationBodyList)).collect {
-                when (it) {
-                    is NetworkResponseState.Loading -> {
-                        _bulkWeatherList.value = UiState.Loading
-                    }
+            if (locationList.size == 1) {
+                weatherUseCaseImpl.invoke(locationList[0].lat.toString(), locationList[0].lon.toString()).collect {
+                    when (it) {
+                        is NetworkResponseState.Loading -> {
+                            _bulkWeatherList.value = UiState.Loading
+                        }
 
-                    is NetworkResponseState.Success -> {
-                        _bulkWeatherList.value = UiState.Success(it.result)
-                    }
+                        is NetworkResponseState.Success -> {
+                            val data = it.result
+                            val list: ArrayList<BulkWeatherData> = ArrayList()
+                            list.add(
+                                BulkWeatherData(
+                                    id = locationList[0].id,
+                                    location = locationList[0],
+                                    weather = data
+                                )
+                            )
+                            _bulkWeatherList.value = UiState.Success(list)
+                        }
 
-                    is NetworkResponseState.Error -> {
-                        _bulkWeatherList.value =
-                            UiState.Error(it.exception.message ?: "Error")
+                        is NetworkResponseState.Error -> {
+                            _bulkWeatherList.value =
+                                UiState.Error(it.exception.message ?: "Error")
+                        }
+                    }
+                }
+            } else {
+                bulkLocationUseCase.invoke(latList, lonList).collect {
+                    when (it) {
+                        is NetworkResponseState.Loading -> {
+                            _bulkWeatherList.value = UiState.Loading
+                        }
+
+                        is NetworkResponseState.Success -> {
+                            val list: ArrayList<BulkWeatherData> = ArrayList()
+                            for (i in locationList.indices) {
+                                list.add(
+                                    BulkWeatherData(
+                                        id = locationList[i].id,
+                                        location = locationList[i],
+                                        weather = it.result[i]
+                                    )
+                                )
+                            }
+                            _bulkWeatherList.value = UiState.Success(list)
+                        }
+
+                        is NetworkResponseState.Error -> {
+                            _bulkWeatherList.value =
+                                UiState.Error(it.exception.message ?: "Error")
+                        }
                     }
                 }
             }
         }
     }
 
-    fun saveLocation(location: Location) {
-        viewModelScope.launch {
-            saveWeatherLocationUseCase.invoke(LocationEntityMapperImpl().map(location))
+    fun saveLocation(location: Location?) {
+        location?.let {
+            viewModelScope.launch {
+                saveWeatherLocationUseCase.invoke(LocationEntityMapperImpl().map(location))
+            }
         }
     }
 
@@ -187,46 +242,23 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun getLoaddedAstronomyData(locationId: String): WeatherDetails? {
-        val astroData = (_weatherDetailsList.value).firstOrNull {
-            it.locationId == locationId
-        }
-        return astroData
-    }
-
-    fun getAstronomyData(
-        weatherData: WeatherData,
-        locationId: String,
-        latlon: String,
-        date: String
-    ) {
-        viewModelScope.launch {
-            astroDataUseCase.invoke(latlon, date).collect {
+    suspend fun getAstronomyData(
+        lat: String,
+        lon: String
+    ): Flow<UiState<CurrentWeather>> {
+        return flow {
+            astroDataUseCase.invoke(lat, lon).collect {
                 when (it) {
-
                     is NetworkResponseState.Loading -> {
-                        _astroDataState.value = UiState.Loading
+                        emit(UiState.Loading)
                     }
 
                     is NetworkResponseState.Success -> {
-                        val data = it.result
-                        _astroDataState.value = UiState.Success(data)
-                        _weatherDetailsList.update { list ->
-                            list.plus(
-                                WeatherDetails(
-                                    locationId = locationId,
-                                    sunRise = data.astronomy.astro.sunrise,
-                                    sunSet = data.astronomy.astro.sunset,
-                                    precipitation = weatherData.precipitation.toString(),
-                                    uvIndex = weatherData.uv,
-                                    wind = weatherData.windKph.toString(),
-                                )
-                            )
-                        }
+                        emit(UiState.Success(it.result))
                     }
 
                     is NetworkResponseState.Error -> {
-                        _astroDataState.value = UiState.Error(it.exception.message ?: "Error")
+                        emit(UiState.Error(it.exception.message ?: "Error"))
                     }
                 }
             }

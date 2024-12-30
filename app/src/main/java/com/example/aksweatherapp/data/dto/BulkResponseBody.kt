@@ -1,5 +1,6 @@
 package com.example.aksweatherapp.data.dto
 
+import com.example.aksweatherapp.domain.entity.LocationEntity
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
@@ -26,4 +27,11 @@ data class WeatherBody(
 
     @Json(name = "current")
     val current: WeatherData,
+)
+
+@JsonClass(generateAdapter = true)
+data class BulkWeatherData(
+    val id: String?,
+    val location: LocationEntity,
+    val weather: CurrentWeather
 )

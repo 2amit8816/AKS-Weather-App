@@ -1,23 +1,26 @@
 package com.example.aksweatherapp.data.remote
 
+import com.example.aksweatherapp.common.GeoService
 import com.example.aksweatherapp.common.NetworkResponseState
-import com.example.aksweatherapp.data.api.ApiService
+import com.example.aksweatherapp.common.WeatherService
+import com.example.aksweatherapp.data.api.GeoApiService
+import com.example.aksweatherapp.data.api.WeatherApiService
 import com.example.aksweatherapp.data.dto.AstronomyBody
-import com.example.aksweatherapp.data.dto.BulkRequestBody
-import com.example.aksweatherapp.data.dto.BulkResponseBody
-import com.example.aksweatherapp.data.dto.Location
-import com.example.aksweatherapp.data.dto.LocationBody
-import com.example.aksweatherapp.data.dto.Weather
+import com.example.aksweatherapp.data.dto.CurrentWeather
+import com.example.aksweatherapp.data.dto.LocationSearchResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 
-class RemoteDataSourceImpl @Inject constructor(private val apiService: ApiService) : RemoteDataSource{
-    override fun getLocationListFromApi(searchQuery: String): Flow<NetworkResponseState<List<Location>>> {
+class RemoteDataSourceImpl @Inject constructor(
+    @GeoService private val geoApiService: GeoApiService,
+    @WeatherService private val weatherApiService: WeatherApiService
+) : RemoteDataSource {
+    override fun getLocationListFromApi(searchQuery: String): Flow<NetworkResponseState<LocationSearchResult>> {
         return flow {
             emit(NetworkResponseState.Loading)
             try {
-                val response = apiService.getLocationsListOnQueryFromApi(searchQuery)
+                val response = geoApiService.getLocationsListOnQueryFromApi(searchQuery)
                 emit(NetworkResponseState.Success(response))
             } catch (e: Exception) {
                 emit(NetworkResponseState.Error(e))
@@ -25,11 +28,14 @@ class RemoteDataSourceImpl @Inject constructor(private val apiService: ApiServic
         }
     }
 
-    override fun getCurrentWeatherDataFromApi(latlon: String): Flow<NetworkResponseState<Weather>> {
+    override fun getCurrentWeatherDataFromApi(
+        lat: String,
+        lon: String
+    ): Flow<NetworkResponseState<CurrentWeather>> {
         return flow {
             emit(NetworkResponseState.Loading)
             try {
-                val response = apiService.getCurrentWeatherDataFromApi(latlon)
+                val response = weatherApiService.getCurrentWeatherDataFromApi(lat, lon)
                 emit(NetworkResponseState.Success(response))
             } catch (e: Exception) {
                 emit(NetworkResponseState.Error(e))
@@ -37,11 +43,15 @@ class RemoteDataSourceImpl @Inject constructor(private val apiService: ApiServic
         }
     }
 
-    override fun getBulkDataFromApi(locationBody: BulkRequestBody): Flow<NetworkResponseState<BulkResponseBody>> {
+    override fun getBulkDataFromApi(
+        latList: String,
+        lonList: String
+    ): Flow<NetworkResponseState<List<CurrentWeather>>> {
         return flow {
             emit(NetworkResponseState.Loading)
             try {
-                val response = apiService.getBulkDataFromApi(query = "bulk", body = locationBody)
+                val response =
+                    weatherApiService.getBulkDataFromApi(latList, lonList)
                 emit(NetworkResponseState.Success(response))
             } catch (e: Exception) {
                 emit(NetworkResponseState.Error(e))
@@ -49,11 +59,15 @@ class RemoteDataSourceImpl @Inject constructor(private val apiService: ApiServic
         }
     }
 
-    override fun getAstroDataFromApi(latlon: String, date: String): Flow<NetworkResponseState<AstronomyBody>> {
+    override fun getAstroDataFromApi(
+        lat: String,
+        lon: String
+    ): Flow<NetworkResponseState<CurrentWeather>> {
         return flow {
             emit(NetworkResponseState.Loading)
             try {
-                val response = apiService.getAstronomyDataFromApi(query = latlon, date = date)
+                val response =
+                    weatherApiService.getAstronomyDataFromApi(lat, lon)
                 emit(NetworkResponseState.Success(response))
             } catch (e: Exception) {
                 emit(NetworkResponseState.Error(e))

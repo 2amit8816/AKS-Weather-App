@@ -1,31 +1,57 @@
 package com.example.aksweatherapp.data.api
 
+import com.example.aksweatherapp.common.Constants.FORECAST_DAYS_PARAM
+import com.example.aksweatherapp.common.Constants.PRECIPITATION_PARAM
+import com.example.aksweatherapp.common.Constants.SUNRISE_PARAM
+import com.example.aksweatherapp.common.Constants.SUNSET_PARAM
+import com.example.aksweatherapp.common.Constants.TEMP_PARAM
+import com.example.aksweatherapp.common.Constants.TIME_FORMAT_PARAM
+import com.example.aksweatherapp.common.Constants.UV_INDEX_PARAM
+import com.example.aksweatherapp.common.Constants.WEATHER_CODE_PARAM
+import com.example.aksweatherapp.common.Constants.WIND_SPEED_PARAM
 import com.example.aksweatherapp.data.dto.AstronomyBody
 import com.example.aksweatherapp.data.dto.BulkRequestBody
 import com.example.aksweatherapp.data.dto.BulkResponseBody
-import com.example.aksweatherapp.data.dto.Location
-import com.example.aksweatherapp.data.dto.Weather
+import com.example.aksweatherapp.data.dto.CurrentWeather
+import com.example.aksweatherapp.data.dto.LocationSearchResult
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Query
 
-interface ApiService {
-    @GET("search.json")
-    suspend fun getLocationsListOnQueryFromApi(@Query("q") query: String): List<Location>
+interface GeoApiService {
+    @GET("search")
+    suspend fun getLocationsListOnQueryFromApi(@Query("name") query: String): LocationSearchResult
+}
 
-    @GET("current.json")
-    suspend fun getCurrentWeatherDataFromApi(@Query("q") query: String): Weather
+interface WeatherApiService {
+    @GET("forecast")
+    suspend fun getCurrentWeatherDataFromApi(
+        @Query("latitude") latitude: String,
+        @Query("longitude") longitude: String,
+        @Query("current") current: String = "${TEMP_PARAM},${PRECIPITATION_PARAM},${WEATHER_CODE_PARAM},${WIND_SPEED_PARAM}",
+        @Query("daily") daily: String = UV_INDEX_PARAM,
+        @Query("forecast_days") forecastDays: Int = FORECAST_DAYS_PARAM,
+        @Query("timeformat") astro: String = TIME_FORMAT_PARAM,
+    ): CurrentWeather
 
-    @POST("current.json")
+    @GET("forecast")
     suspend fun getBulkDataFromApi(
-        @Body body: BulkRequestBody,
-        @Query("q") query: String
-    ): BulkResponseBody
+        @Query("latitude") latitudeList: String,
+        @Query("longitude") longitudeList: String,
+        @Query("current") current: String = "${TEMP_PARAM},${PRECIPITATION_PARAM},${WEATHER_CODE_PARAM},${WIND_SPEED_PARAM}",
+        @Query("daily") daily: String = UV_INDEX_PARAM,
+        @Query("forecast_days") forecastDays: Int = FORECAST_DAYS_PARAM,
+        @Query("timeformat") astro: String = TIME_FORMAT_PARAM,
+    ): List<CurrentWeather>
 
-    @GET("astronomy.json")
+    @GET("forecast")
     suspend fun getAstronomyDataFromApi(
-        @Query("q") query: String,
-        @Query("dt") date: String
-    ): AstronomyBody
+        @Query("latitude") latitude: String,
+        @Query("longitude") longitude: String,
+        @Query("current") current: String = "${TEMP_PARAM},${PRECIPITATION_PARAM},${WEATHER_CODE_PARAM},${WIND_SPEED_PARAM}",
+        @Query("daily") daily: String = "${UV_INDEX_PARAM},${SUNRISE_PARAM},${SUNSET_PARAM}",
+        @Query("forecast_days") forecastDays: Int = FORECAST_DAYS_PARAM,
+        @Query("timeformat") astro: String = TIME_FORMAT_PARAM,
+    ): CurrentWeather
 }

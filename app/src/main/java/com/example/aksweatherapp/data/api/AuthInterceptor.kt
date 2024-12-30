@@ -10,7 +10,8 @@ class AuthInterceptor @Inject constructor(private val tokenManager: TokenManager
         val request = chain.request().newBuilder()
         val token = tokenManager.getToken()
         val originalHttpUrl = chain.request().url
-        val url = originalHttpUrl.newBuilder().addQueryParameter("key", token).build()
+        //val url = originalHttpUrl.newBuilder().addQueryParameter("access_key", token).build()
+        val url = originalHttpUrl.newBuilder().build()
 
         return chain.proceed(request.url(url).build())
     }

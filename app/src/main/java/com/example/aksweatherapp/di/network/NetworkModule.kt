@@ -1,9 +1,13 @@
 package com.example.aksweatherapp.di.network
 
-import com.example.aksweatherapp.common.Constants.BASE_URL
+import com.example.aksweatherapp.common.Constants.GEO_BASE_URL
+import com.example.aksweatherapp.common.Constants.WEATHER_BASE_URL
+import com.example.aksweatherapp.common.GeoService
 import com.example.aksweatherapp.common.TokenManager
-import com.example.aksweatherapp.data.api.ApiService
+import com.example.aksweatherapp.common.WeatherService
 import com.example.aksweatherapp.data.api.AuthInterceptor
+import com.example.aksweatherapp.data.api.GeoApiService
+import com.example.aksweatherapp.data.api.WeatherApiService
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.Module
@@ -50,14 +54,27 @@ object NetworkModule {
             .build()
     }
 
+    @GeoService
     @Provides
     @Singleton
-    fun provideService(moshi: Moshi, okHttpClient: OkHttpClient): ApiService {
+    fun provideGeoService(moshi: Moshi, okHttpClient: OkHttpClient): GeoApiService {
         return Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(GEO_BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
-            .create(ApiService::class.java)
+            .create(GeoApiService::class.java)
+    }
+
+    @WeatherService
+    @Provides
+    @Singleton
+    fun provideWeatherService(moshi: Moshi, okHttpClient: OkHttpClient): WeatherApiService {
+        return Retrofit.Builder()
+            .baseUrl(WEATHER_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(WeatherApiService::class.java)
     }
 }

@@ -8,23 +8,26 @@ import androidx.room.PrimaryKey
 data class LocationEntity(
     @PrimaryKey
     @ColumnInfo(name = "location_id")
-    var id: Int,
+    var id: String,
 
     @ColumnInfo(name = "location_name")
-    val name: String,
+    val name: String?,
 
     @ColumnInfo(name = "location_region")
-    val region: String,
+    val region: String?,
 
     @ColumnInfo(name = "location_country")
-    val country: String,
+    val country: String?,
 
     @ColumnInfo(name = "location_lat")
-    val lat: Float,
+    val lat: Float?,
 
     @ColumnInfo(name = "location_lon")
-    val lon: Float,
+    val lon: Float?,
 
     @ColumnInfo(name = "location_url")
-    val url: String,
+    val url: String?,
+
+    @ColumnInfo(name = "location_timezone")
+    val timezone: String?,
 )
